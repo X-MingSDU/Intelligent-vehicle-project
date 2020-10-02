@@ -1,0 +1,4 @@
+".\Objects\STARTUP.obj",
+".\Objects\main.obj" 
+TO ".\Objects\PWM_control" 
+PRINT(".\Listings\PWM_control.m51") RAMSIZE(256) 

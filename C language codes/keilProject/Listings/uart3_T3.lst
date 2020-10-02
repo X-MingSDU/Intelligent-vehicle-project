@@ -1,0 +1,313 @@
+C51 COMPILER V9.59.0.0   UART3_T3                                                          04/18/2020 09:37:50 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE UART3_T3
+OBJECT MODULE PLACED IN .\uart3_T3.obj
+COMPILER INVOKED BY: D:\KEIL5\C51\BIN\C51.EXE ..\super_sonic\uart3_T3.c OPTIMIZE(7,SPEED) DEBUG OBJECTEXTEND PRINT(.\Lis
+                    -tings\uart3_T3.lst) TABS(2) OBJECT(.\uart3_T3.obj)
+
+line level    source
+
+   1          #include "reg51.h"
+   2          #include "intrins.h"
+   3          //×¢Òâ£¡·¢ËÍÊý¾ÝÒªÑ¡ÔñhexÄ£Ê½£¡±ÈÈçÍ¬ÑùµÄÊý¾Ý01£¬
+   4          //²ÉÓÃºÍÎÄ±¾Ä£Ê½ºÍhexÄ£Ê½·¢ËÍºó½ÓÊÕµ½µÄÊý¾ÝÊµ¼ÊÉÏ²»Ò»Ñù£¡
+   5          //´®¿Ú1ÓÃT1£¬´®¿Ú3ÓÃT3£¬´®¿Ú¶þÓÃT2×ö²¨ÌØÂÊ·¢ÉúÆ÷
+   6          //@24M 9600
+   7          #define FOSC            11059200UL 
+   8          #define BRT             (65536 - FOSC / 9600 / 4)
+   9          sfr     AUXR        =   0x8e;
+  10          sfr     T4T3M       =   0xd1;
+  11          sfr     T4H         =   0xd2;
+  12          sfr     T4L         =   0xd3;
+  13          sfr     T3H         =   0xd4;
+  14          sfr     T3L         =   0xd5;
+  15          sfr     T2H         =   0xd6;
+  16          sfr     T2L         =   0xd7;
+  17          sfr     S2CON       =   0x9a;
+  18          sfr     S2BUF       =   0x9b;//ËüÃÇ¾ÓÈ»ÊÇ°¤Ò»ÆðµÄ¡£¡£¡£    
+  19          sfr     S3CON       =   0xac;
+  20          sfr     S3BUF       =   0xad;
+  21          sfr     S4CON       =   0x84;
+  22          sfr     S4BUF       =   0x85;  
+  23          sfr     IE2         =   0xaf;
+  24          
+  25          bit busy_1;
+  26          bit busy_2;
+  27          bit busy_3;//ÕâÑùÐ´Ö¸µÄÊÇ¶¨ÒåÒ»¸öÎ»£¿
+  28          char uart1_received;
+  29          char uart3_received[4];
+  30          char uart2_received[4];
+  31          char wptr_2=0;
+  32          char wptr_3=0;
+  33            //´®¿ÚÈýÊÕµ½µÄ³¬Éù²¨µÄÊý¾ÝÎªËÄ¸öchar
+  34          void Delay50ms();   //@24.000MHz
+  35          void uart1_isr() interrupt 4//isr: Interrupt Service Routine
+  36          {
+  37   1        if(RI)
+  38   1        {
+  39   2          RI=0;
+  40   2          busy_1=0;
+  41   2          uart1_received=SBUF;//½«¶Á»º´æÆ÷µÄÊý¾Ý´æ½ø±äÁ¿uart1_received
+  42   2          // wptr_1++;
+  43   2          //wptr_1&=0x07;//¶àÓÚ8¸ö×Ö½Ú¾Í»á¸²¸ÇÇ°ÃæµÄÊý¾Ý
+  44   2          //if(wptr_1>=4){wptr_1=0;}//uart1_received¹æ¶¨Îª8Î»
+  45   2        }
+  46   1      }
+  47          void uart3_isr() interrupt 17  //´®¿Ú3µÄÖÐ¶Ïº¯Êý
+  48          {
+  49   1          if (S3CON & 0x01) //R3I Èç¹ûÊÇ½ÓÊÕÖÐ¶Ï
+  50   1          {
+  51   2              S3CON &= ~0x01;
+  52   2              uart3_received[wptr_3++]=S3BUF;
+  53   2              wptr_3&=0x03;//¶àÓÚ4¸ö×Ö½Ú¾Í»á¸²¸ÇÇ°ÃæµÄÊý¾Ý
+  54   2              busy_3=0;
+C51 COMPILER V9.59.0.0   UART3_T3                                                          04/18/2020 09:37:50 PAGE 2   
+
+  55   2          }
+  56   1          if(S3CON & 0x02)
+  57   1          {
+  58   2            S3CON &=  ~0x02;
+  59   2            busy_3=0;
+  60   2          }
+  61   1      }
+  62          void uart2_isr() interrupt 8  //´®¿Ú2µÄÖÐ¶Ïº¯Êý
+  63          {
+  64   1        if(S2CON&0x02)
+  65   1        {
+  66   2          S2CON&=~0x02;//~0x02==0xFD
+  67   2          busy_2=0;//·¢ËÍÍêÒ»Ö¡Êý¾Ý£¬busy_4Î»ÖÃ0£¬ÒÔ±ã·¢ËÍÏÂÒ»Ö¡Êý¾Ý
+  68   2        }
+  69   1        if(S2CON&0x01)
+  70   1        {
+  71   2          S2CON&=~0x01;
+  72   2          uart2_received[wptr_2++]=S2BUF;//×¢Òâ²»ÊÇSBUF
+  73   2          wptr_2&=0x03;//³¬¹ýËÄÎ»¾ÍÖð¸ö¸²¸ÇÒÔÇ°µÄÊý¾Ý
+  74   2          busy_2=0;
+  75   2        }
+  76   1      }  
+  77          void uart1_init();
+  78          void uart3_init();
+  79          void uart2_init();
+  80          void uart1_send_char(unsigned  char dat);
+  81          void uart1_send_str(unsigned  char* p);
+  82          void uart3_send_char(unsigned  char dat);
+  83          void uart3_send_str(unsigned  char *p);
+  84          void uart2_send_char(unsigned  char  dat);
+  85          void uart2_send_str(unsigned  char* p);
+  86          void Delay100ms();    //@24.000MHz
+  87          void Delay50ms();     //@24.000MHz
+  88          void Delay1000ms();   //@24.000MHz*/
+  89          void main()
+  90          {
+  91   1        int i;
+  92   1        int temp;//ÓÃÀ´ÁÙÊ±´æ´¢uart1_receivedµÄÊý¾Ý£¬Ê¹uart1_received¿Õ³öÀ´½ÓÊÕÐÂµÄÊý¾Ý
+  93   1        //ÓÉÓÚÓÐ¶à´¦ÑÓÊ±£¬ËùÒÔÈç¹ûÉÏÎ»»ú·¢ËÍÊý¾ÝÌ«¿ì
+  94   1        //ÔÚÊý¾Ý±»´¦ÀíÖ®Ç°¾Í±»¸²¸ÇÁË£¬¿ÉÄÜ»áµ¼ÖÂ·¢ËÍµÄÊý¾Ý±È½ÓÊÕµÄÊý¾ÝÉÙ
+  95   1        //ËùÒÔÉÏÎ»»ú¶ÁÈ¡Êý¾ÝµÄ¼ä¸ô×îºÃ²»Òª³¬¹ý100ms
+  96   1        Delay50ms();//ÑÓÊ±1000ms
+  97   1        uart1_init();//×¢Òâ¼Ä´æÆ÷AUXRµÄÖµÊÇ·ñ±»ÖØ¸´¸Ä¶¯µ¼ÖÂinitÊ§°Ü
+  98   1        uart3_init();
+  99   1        uart2_init();
+ 100   1        ES=1;       //´ò¿ª´®¿Ú1µÄÖÐ¶Ï
+ 101   1        IE2 = 0x09; //´ò¿ª´®¿Ú3(0x08)µÄÖÐ¶ÏºÍ´®¿Ú2µÄÖÐ¶Ï(0x01) 
+ 102   1        EA = 1;//´ò¿ª×ÜÖÐ¶Ï  
+ 103   1        while(1)
+ 104   1        {
+ 105   2          //uart3_send_str("Bingo!\n");    
+ 106   2          while(uart1_received!=0x00)//±íÊ¾´®¿Ú1ÊÕµ½ÉÏÎ»»úµÄÖ¸Áî£¨¶àÖÖÖ¸Áî¾ù¿É£©
+ 107   2          {
+ 108   3            //¾­µ÷ÊÔ£¬³ÌÐò¿ÉÒÔÍ¨¹ýÅÐ¶Ïyart1_received½øÈë whileÑ­»·
+ 109   3              //uart2_send_str("Bingo!\n");
+ 110   3              temp=uart1_received;//ÏÂÃæÓÃtemp´úÌæuart1_received
+ 111   3              //½«´®¿Ú1µÄÊý¾Ý¸´Î»£¬×¼±¸ÏÂÒ»´ÎµÄ½ÓÊÕ
+ 112   3              //Ò»½øÈëwhileÑ­»·¾Í¸´Î»Êý¾Ý£¬·ÀÖ¹ÐÂµÄÊý¾ÝÒòÎªÕâÒ»ÐÐ¶ø±»Ä¨µô
+ 113   3              uart1_received=0x00;
+ 114   3              uart1_send_char(temp);
+ 115   3              //Delay50ms();//±ÜÃâÏÂÒ»¾äµÄwhileÅÐ¶ÏÔÚSBUFÊÕµ½Êý¾ÝÖ®Ç°Ö´ÐÐ£¨²»ÐèÒªÁË£©
+ 116   3              if(temp==0x01)//Èç¹ûÊÕµ½µÄÊÇ¶ÁÈ¡³¬Éù²¨1Êý¾ÝµÄÖ¸Áî
+C51 COMPILER V9.59.0.0   UART3_T3                                                          04/18/2020 09:37:50 PAGE 3   
+
+ 117   3              {
+ 118   4                uart3_send_char(0x00);//´®¿Ú3Ïò³¬Éù²¨Ä£¿é·¢ËÍÊý¾Ý
+ 119   4                Delay50ms();//È·±£³¬Éù²¨ÒÑ¾­½«Êý¾Ý·¢ËÍ¹ýÀ´
+ 120   4                Delay50ms();
+ 121   4                Delay50ms();
+ 122   4                Delay50ms();
+ 123   4                uart1_send_str(uart3_received);
+ 124   4              }
+ 125   3              //uart1_send_char(0xFF);//·¢ËÍ×Ö½ÚµÄ»°ÓÃsend_char²»ÒªÓÃsend_str,ÒÑÑéÖ¤£¬Ïò´®¿ÚÈý·¢ËÍÊý¾Ý£¬´®¿ÚÒ»Íù
+             -»Ø·¢¶¼Ã»ÎÊÌâ
+ 126   3              //uart1_send_str("Bingo!");//²âÊÔ·¢ÏÖÃ¿´ÎÈç¹ûÊÇ×Ö·û´®µÄ»°Ã¿´ÎÖ»ÄÜ·¢»ØÀ´Ò»¸ö×Ö½Ú
+ 127   3              // *uart3_received=0x00; 
+ 128   3              else if (temp==0x02)
+ 129   3              {
+ 130   4                uart2_send_char(0x00);
+ 131   4                Delay50ms();
+ 132   4                uart1_send_str(uart2_received);
+ 133   4              }
+ 134   3          }
+ 135   2        }
+ 136   1      }
+*** WARNING C280 IN LINE 91 OF ..\super_sonic\uart3_T3.c: 'i': unreferenced local variable
+ 137          
+ 138          void Delay50ms()    //@24.000MHz
+ 139          {
+ 140   1        unsigned char i, j, k;
+ 141   1      
+ 142   1        _nop_();
+ 143   1        _nop_();
+ 144   1        i = 5;
+ 145   1        j = 144;
+ 146   1        k = 71;
+ 147   1        do
+ 148   1        {
+ 149   2          do
+ 150   2          {
+ 151   3            while (--k);
+ 152   3          } while (--j);
+ 153   2        } while (--i);
+ 154   1      }
+ 155          void uart1_init()
+ 156          {
+ 157   1        SCON=0x50;//ÒÔÄ£Ê½0¹¤×÷£¬Í¬Ê±Ñ¡ÔñT1×÷Îª~
+ 158   1        TMOD=0x00;//16Î»×Ô¶¯ÖØ×°
+ 159   1        TL1=BRT;
+ 160   1        TH1=BRT>>8;
+ 161   1        TR1=1;//T1¿ªÊ¼¼ÆÊý
+ 162   1        AUXR=0x40;
+ 163   1       // AUXR|=0x40;//²»·ÖÆµ
+ 164   1        //AUXR&=0xFE;////Ê¹ÓÃT1×÷Îª²¨ÌØÂÊ·¢ÉúÆ÷
+ 165   1        busy_1=0;
+ 166   1        uart1_received=0x00;
+ 167   1      }
+ 168          void uart3_init()
+ 169          {
+ 170   1          int i=0;
+ 171   1          S3CON = 0x50; 
+ 172   1          //0b  0101 0000  £¨P326£©£¬¿É±ä²¨ÌØÂÊ 8Î»£¬Ñ¡ÔñT3Îª~£¬
+ 173   1          //Ö÷ÒªÈ·¶¨¹¤×÷Ä£Ê½ºÍ¶¨Ê±Æ÷·¢ÉúÆ÷               
+ 174   1          T3L = BRT;
+ 175   1          T3H = BRT >> 8;//baud_rateÎª9600
+ 176   1          T4T3M = 0x0a; //0b 0000 1£¨T3R£¬T3¿ªÊ¼¼ÆÊý£©001
+C51 COMPILER V9.59.0.0   UART3_T3                                                          04/18/2020 09:37:50 PAGE 4   
+
+ 177   1          busy_3 = 0;
+ 178   1          /*for(;i<4;i++)
+ 179   1          {uart3_received[i]=0xFF;} */
+ 180   1      }
+ 181          void uart3_send_char(unsigned  char dat)
+ 182          {
+ 183   1          while (busy_3);
+ 184   1          busy_3 = 1;
+ 185   1          S3BUF = dat; //Ïò´®¿Ú3µÄÊý¾Ý»º´æÆ÷Ð´ÈëÊý¾Ý
+ 186   1          //while(T3I==0);
+ 187   1          //T3I=0;
+ 188   1          //while(S3CON&0x02==0x00);//µÈ¼ÛÓÚT3I==0
+ 189   1          //S3CON&=0xFD;//µÈ¼ÛÓÚT3I=1;
+ 190   1          //S3CON&=~0x02;
+ 191   1      }
+ 192          void uart3_send_str(unsigned  char *p)
+ 193          {
+ 194   1          while (*p)
+ 195   1          {
+ 196   2              uart3_send_char(*p++);
+ 197   2          }
+ 198   1      }  
+ 199          void uart1_send_char(unsigned  char dat)
+ 200          {
+ 201   1        while(busy_1);
+ 202   1        busy_1=1;
+ 203   1        SBUF=dat;
+ 204   1        while(TI==0);
+ 205   1        TI=0;//Ö±½ÓÔÚ·¢ËÍº¯ÊýÀï½«TIÖÃ0£¬²»ÔÚÖÐ¶Ïº¯ÊýÀïÖÃ0
+ 206   1        busy_1=0;//×î¿ªÊ¼Õâ¾äÃ»Ð´
+ 207   1      }
+ 208          //bug¼ÇÂ¼£º×î¿ªÊ¼ÔÚuart1_send_charÀïÃæÐ´ÁËÈçÉÏÄÚÈÝ£¨³ýÁËbusy_1=0£©£¬µ«ÊÇÓÉÓÚÕâÀïÃæÒÑ¾­½«TIÖÃ0£¬¶øÇÒÃ»ÓÐ½«b
+             -usy_1ÖÃ0
+ 209          //ËùÓÐ¼´Ê¹½øÈëÁËÖÐ¶Ïº¯Êý£¬ÓÉÓÚif(TI)µÄÌõ¼þ²»¿ÉÄÜÂú×ã£¬ËùÒÔbusy_1Ò»Ö±ÊÇ1£¬¼´Ê¹·¢ËÍµÄÊÇ×Ö·û´®£¬Ò²Ö»ÄÜ·¢³öÈ¥µ
+             -ÚÒ»¸ö£¬Ö»ÓÐÔÙ½ÓÊÕµ½Ò»¸ö
+ 210          //×Ö·û´®£¬½øÈëÖÐ¶Ïº¯Êýif(RI)Ê±²ÅÄÜ½«busy_1ÖÃ0£¬´Ó¶ø·¢ËÍ×Ö·û´®µÄÏÂÒ»¸ö×Ö·û£¬´Ó¶ø²úÉúÁË·¢Ò»¸öÊÕÒ»¸öµÄÏÖÏó
+ 211          void uart1_send_str(unsigned  char* p)
+ 212          {
+ 213   1        while(*p)
+ 214   1        {
+ 215   2          uart1_send_char(*p++);
+ 216   2        }
+ 217   1      }
+ 218          
+ 219          void uart2_init()
+ 220          {
+ 221   1        S2CON=0x10;//S4ST4==0£¨Ê¹ÓÃT2×÷Îª~£©£¬S4REN=1£¬ÔÊÐí½ÓÊÕÊý¾Ý
+ 222   1        //ÎªÁË²»¸ÉÉæÆäËû¶¨Ê±Æ÷µÄÊ¹ÓÃ£¬×îºÃ²ÉÈ¡Î»ÔËËã£¬Ö»¶ÔÓëT2ÓÐ¹ØµÄÎ»¸³Öµ
+ 223   1        T2L=BRT;
+ 224   1        T2H=BRT>>8;//ÏÈ¸³ÖµÔÙ¼ÆÊý
+ 225   1        AUXR|=0x10;//T2R=1£¬T2¿ªÊ¼¼ÆÊý
+ 226   1        AUXR|=0x04;//T2x12=1,²»·ÖÆµ
+ 227   1        busy_2=0;
+ 228   1        /*for(;i<4;i++)
+ 229   1        {uart2_received[i]=0xFF;} //¸´Î»´®¿Ú2µÄ½ÓÊÕÊý¾Ý*/
+ 230   1      }
+ 231          void uart2_send_char(unsigned  char  dat)
+ 232          {
+ 233   1        while(busy_2);
+ 234   1        busy_2=1;
+ 235   1        S2BUF=dat;//×¢Òâ²»ÊÇSBUF
+ 236   1      }
+C51 COMPILER V9.59.0.0   UART3_T3                                                          04/18/2020 09:37:50 PAGE 5   
+
+ 237          void uart2_send_str(unsigned  char* p)
+ 238          {
+ 239   1        while(*p)
+ 240   1        {
+ 241   2          uart2_send_char(*p++);
+ 242   2        }
+ 243   1      }
+ 244          void Delay1000ms()    //@24.000MHz
+ 245          {
+ 246   1        unsigned char i, j, k;
+ 247   1      
+ 248   1        _nop_();
+ 249   1        _nop_();
+ 250   1        i = 122;
+ 251   1        j = 193;
+ 252   1        k = 128;
+ 253   1        do
+ 254   1        {
+ 255   2          do
+ 256   2          {
+ 257   3            while (--k);
+ 258   3          } while (--j);
+ 259   2        } while (--i);
+ 260   1      }
+ 261          void Delay100ms()   //@24.000MHz
+ 262          {
+ 263   1        unsigned char i, j, k;
+ 264   1      
+ 265   1        _nop_();
+ 266   1        _nop_();
+ 267   1        i = 10;
+ 268   1        j = 31;
+ 269   1        k = 147;
+ 270   1        do
+ 271   1        {
+ 272   2          do
+ 273   2          {
+ 274   3            while (--k);
+ 275   3          } while (--j);
+ 276   2        } while (--i);
+ 277   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    467    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     11      15
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      3    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,374 @@
+C51 COMPILER V9.59.0.0   MAIN                                                              03/24/2020 01:14:00 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: D:\KEIL5\C51\BIN\C51.EXE main.c OPTIMIZE(8,SPEED) DEBUG OBJECTEXTEND PRINT(.\Listings\main.lst) TAB
+                    -S(2)
+
+line level    source
+
+   1          #include "reg51.h"
+   2          #include "intrins.h"
+   3          
+   4          //测试晶振频率为11.0592MHz
+   5          //波特率为9600Hz
+   6          
+   7          sfr     P_SW2       =   0xba;//外设端口切换寄存器2（功能脚切换）
+   8          //可以通过配置这个寄存器和P_SW1实现串口分时复用，以及IIC分时复用等，见教材P74
+   9          
+  10          sfr     PWMCFG      =   0xf1; //增强型PWM配置寄存器
+  11          sfr     PWMIF       =   0xf6;//增强型PWM中断标志寄存器
+  12          sfr     PWMFDCR     =   0xf7;//PWM异常检测控制寄存器
+  13          sfr     PWMCR       =   0xfe;//PWM控制寄存器
+  14          
+  15          sfr     AUXR        =   0x8e;
+  16          sfr     T2H         =   0xd6;
+  17          sfr     T2L         =   0xd7;
+  18          sfr     S2CON       =   0x9a;
+  19          sfr     S2BUF       =   0x9b;
+  20          sfr     IE2         =   0xaf;
+  21          
+  22          #define FOSC            11059200UL
+  23          #define BRT             (65536 - FOSC / 9600 / 4)
+  24          
+  25          //注：PWMxTn没有分为H和L
+  26          #define PWMC            (*(unsigned int volatile xdata *)0xfff0)
+  27          #define PWMCKS          (*(unsigned char volatile xdata *)0xfff2) //PWM时钟选择
+  28          #define TADCP           (*(unsigned int volatile xdata *)0xfff3)  //触发ADC计数值
+  29          #define PWM0T1          (*(unsigned int volatile xdata *)0xff00)  //PWM0T1计数值
+  30          #define PWM0T2          (*(unsigned int volatile xdata *)0xff02)  //PWM0T2计数值
+  31          #define PWM0CR          (*(unsigned char volatile xdata *)0xff04) //PWM0控制寄存器
+  32          #define PWM0HLD         (*(unsigned char volatile xdata *)0xff05) //PWM0电平保持控制寄存器
+  33          #define PWM1T1          (*(unsigned int volatile xdata *)0xff10)
+  34          #define PWM1T2          (*(unsigned int volatile xdata *)0xff12)
+  35          #define PWM1CR          (*(unsigned char volatile xdata *)0xff14)
+  36          #define PWM1HLD         (*(unsigned char volatile xdata *)0xff15)
+  37          #define PWM2T1          (*(unsigned int volatile xdata *)0xff20)
+  38          #define PWM2T2          (*(unsigned int volatile xdata *)0xff22)
+  39          #define PWM2CR          (*(unsigned char volatile xdata *)0xff24)
+  40          #define PWM2HLD         (*(unsigned char volatile xdata *)0xff25)
+  41          #define PWM3T1          (*(unsigned int volatile xdata *)0xff30)
+  42          #define PWM3T2          (*(unsigned int volatile xdata *)0xff32)
+  43          #define PWM3CR          (*(unsigned char volatile xdata *)0xff34)
+  44          #define PWM3HLD         (*(unsigned char volatile xdata *)0xff35)
+  45          #define PWM4T1          (*(unsigned int volatile xdata *)0xff40)
+  46          #define PWM4T2          (*(unsigned int volatile xdata *)0xff42)
+  47          #define PWM4CR          (*(unsigned char volatile xdata *)0xff44)
+  48          #define PWM4HLD         (*(unsigned char volatile xdata *)0xff45)
+  49          #define PWM5T1          (*(unsigned int volatile xdata *)0xff50)
+  50          #define PWM5T2          (*(unsigned int volatile xdata *)0xff52)
+  51          #define PWM5CR          (*(unsigned char volatile xdata *)0xff54)
+  52          #define PWM5HLD         (*(unsigned char volatile xdata *)0xff55)
+  53          #define PWM6T1          (*(unsigned int volatile xdata *)0xff60)
+  54          #define PWM6T2          (*(unsigned int volatile xdata *)0xff62)
+C51 COMPILER V9.59.0.0   MAIN                                                              03/24/2020 01:14:00 PAGE 2   
+
+  55          #define PWM6CR          (*(unsigned char volatile xdata *)0xff64)
+  56          #define PWM6HLD         (*(unsigned char volatile xdata *)0xff65)
+  57          #define PWM7T1          (*(unsigned int volatile xdata *)0xff70)
+  58          #define PWM7T2          (*(unsigned int volatile xdata *)0xff72)
+  59          #define PWM7CR          (*(unsigned char volatile xdata *)0xff74)
+  60          #define PWM7HLD         (*(unsigned char volatile xdata *)0xff75)
+  61          
+  62          void Delay10ms()    //@11.0592MHz
+  63          {
+  64   1        unsigned char i, j;
+  65   1      
+  66   1        _nop_();
+  67   1        _nop_();
+  68   1        i = 144;
+  69   1        j = 157;
+  70   1        do
+  71   1        {
+  72   2          while (--j);
+  73   2        } while (--i);
+  74   1      }
+  75          
+  76          void delay_100ms(void)
+  77          {
+  78   1        int i=1;
+  79   1        for(;i<=10;i++)
+  80   1        Delay10ms();
+  81   1      }
+  82          void delay_1s(void)
+  83          {
+  84   1        int i=1;
+  85   1        for(;i<=100;i++)
+  86   1        Delay10ms();
+  87   1      }
+  88          
+  89          
+  90          
+  91          
+  92          
+  93          /* 使用PWM步骤
+  94          步骤：
+  95          0.  P_SW2 |= 0x80;（不知道干啥用的）  
+  96          1.  设置PWM时钟（PWMCKS）
+  97          2.  设置PWM周期（PWMC）
+  98          3.  设置PWM的功能脚以及使能PWM（PWMnCR）
+  99          4.  设置PWM的翻转点（如果包含了"STC8.h"，参照头文件里面的变量符号，如果没有包含，参照自己写的宏定义）
+ 100          5.  P_SW2 &=~0x80;（不知道干啥用的）
+ 101          6.  启动整个PWM模块，同时决定是否要开启PWM计数器归零中断
+ 102          
+ 103          修改翻转点的方法：
+ 104          1.  P_SW2 |= 0x80;
+ 105          2.  修改PWMnT1和PWMnT2的值
+ 106          3.  P_SW2 &=~0x80;
+ 107          
+ 108          即先将EAXFR置为1，再进行翻转点的赋值，赋值完成后再将EAXFR设置为0
+ 109          
+ 110          翻转点说明：
+ 111          计数与设置的第一个翻转点相等时，PWM输出波形翻转为低电平
+ 112          计数与设置的第二个翻转点相同时，PWM输出波形翻转为高电平
+ 113          
+ 114          ps：
+ 115          可通过PWMnHLD寄存器控制电平输出（强制为高电平，强制为低电平，正常输出）
+ 116          
+C51 COMPILER V9.59.0.0   MAIN                                                              03/24/2020 01:14:00 PAGE 3   
+
+ 117          */
+ 118          
+ 119          
+ 120          //配置四个电机的四个PWM信号，分别为PWM0~3，默认都为高电平
+ 121          //全速
+ 122          void fullSpeed(void){
+ 123   1        PWM0T1= 0x0000;
+ 124   1        PWM0T2= 0x0000;
+ 125   1        PWM1T1= 0x0000;
+ 126   1        PWM1T2= 0x0000;
+ 127   1        PWM2T1= 0x0000;
+ 128   1        PWM2T2= 0x0000;  
+ 129   1        PWM3T1= 0x0000;
+ 130   1        PWM3T2= 0x0000;
+ 131   1      }
+ 132          
+ 133          
+ 134          
+ 135          
+ 136          //半速（还没写！！！）
+ 137          void halfSpeed(void){
+ 138   1        int i=0;
+ 139   1      }
+ 140          
+ 141          
+ 142          
+ 143          void initPWMs1(void){
+ 144   1        
+ 145   1        P_SW2 |= 0x80;                              
+ 146   1        //0b 1000 0000 EAXFR为1（关于读写片外数据,不知道干啥用的）
+ 147   1        //其他的不变（为了不影响串口2，3，4的功能脚，最好不要直接对P_SW2赋值）  
+ 148   1      
+ 149   1        PWMCKS = 0x00;                                // PWM时钟为系统时钟
+ 150   1        PWMC = 0x1000;                                //设置PWM周期为1000H个PWM时钟（对应于SG90的周期为20ms）  
+ 151   1        
+ 152   1        //初始PWM信号，四个都一样，小车保持静止，满速
+ 153   1        fullSpeed();
+ 154   1        
+ 155   1        //配置PWM0
+ 156   1        PWM0CR |= 0x80;                               //使能PWM0输出
+ 157   1        PWM0CR &= 0xE7;                               //0b11100111  PWM0输出脚为P2.0 
+ 158   1        
+ 159   1        //配置PWM1
+ 160   1        PWM1CR |= 0x80;
+ 161   1        PWM1CR &= 0xE7;                               //PWM1输出脚为P2.1
+ 162   1        
+ 163   1        //配置PWM2
+ 164   1        PWM2CR |= 0x80;
+ 165   1        PWM2CR &= 0xE7;
+ 166   1        
+ 167   1        //配置PWM3
+ 168   1        PWM3CR |= 0x80;
+ 169   1        PWM3CR &= 0xE7;  
+ 170   1        
+ 171   1        P_SW2 &=~0x80;
+ 172   1        PWMCR = 0x80;                                 
+ 173   1        //0b 1000 0000   ENPWM==1,启动PWM模块（整个PWM模块的控制位）
+ 174   1        //ECBI==0,关闭PWM计数器归零中断
+ 175   1      }
+ 176          
+ 177          //关闭所有PWM输出
+ 178          //100ms的延时是为了避免突然反转，对轮子造成损害
+C51 COMPILER V9.59.0.0   MAIN                                                              03/24/2020 01:14:00 PAGE 4   
+
+ 179          void forbiddenAll(void){
+ 180   1        PWM0CR &= ~0x80;
+ 181   1        PWM1CR &= ~0x80;
+ 182   1        PWM2CR &= ~0x80;
+ 183   1        PWM3CR &= ~0x80;
+ 184   1        delay_100ms();
+ 185   1      }
+ 186          void headForwards(){
+ 187   1        P_SW2 |=0x80;
+ 188   1        forbiddenAll();
+ 189   1        PWM1CR |= 0x80;
+ 190   1        PWM3CR |= 0x80;
+ 191   1        P_SW2 &=~0x80;
+ 192   1      }
+ 193          void headBackwards(void){
+ 194   1        P_SW2 |=0x80;
+ 195   1        forbiddenAll();
+ 196   1        PWM0CR |= 0x80;
+ 197   1        PWM2CR |= 0x80;
+ 198   1        P_SW2 &=~0x80;
+ 199   1      }
+ 200          void turnLeft(void){
+ 201   1        P_SW2 |=0x80;
+ 202   1        forbiddenAll();
+ 203   1        PWM0CR |= 0x80;
+ 204   1        PWM3CR |= 0x80;
+ 205   1        P_SW2 &=~0x80;
+ 206   1        
+ 207   1      }  
+ 208          
+ 209          void turnRight(void){
+ 210   1        P_SW2 |=0x80;
+ 211   1        forbiddenAll();
+ 212   1        PWM1CR |= 0x80;
+ 213   1        PWM2CR |= 0x80;
+ 214   1        P_SW2 &=~0x80;
+ 215   1      }
+ 216          
+ 217          void stop(void){
+ 218   1        P_SW2 |=0x80;
+ 219   1        forbiddenAll();
+ 220   1        P_SW2 &=~0x80;
+ 221   1      }
+ 222          /*
+ 223          配置两个SG90舵机的PWM信号
+ 224          */
+ 225          
+ 226          
+ 227          //全局变量
+ 228          bit busyGY=0;
+ 229          bit busyBLE;
+ 230          char dataFromBLE;
+ 231          char dataFromGY[16];
+ 232          char wptr=0x00;
+ 233          
+ 234          /*
+ 235          配置串口1和串口2
+ 236          串口1用定时器1，串口2用定时器2
+ 237          步骤：
+ 238          1.  选择数据位和波特率是否可变（SCON）
+ 239          2.  选择定时器时钟，以及串口选择哪个定时器作为波特率发生器（AUXR或者AUXR2）
+ 240          3.  设置定时器的初值
+C51 COMPILER V9.59.0.0   MAIN                                                              03/24/2020 01:14:00 PAGE 5   
+
+ 241          4.  禁止定时器中断
+ 242          5.  打开定时器
+ 243          */
+ 244          void uartInit(void)   //9600bps@11.0592MHz
+ 245          {
+ 246   1        //配置串口1（见P315~P319）
+ 247   1        SCON = 0x50;
+ 248   1        //TCON = 
+ 249   1        TMOD = 0x00;
+ 250   1        TL1 = BRT;
+ 251   1        TH1 = BRT >> 8;
+ 252   1        AUXR =0x00;
+ 253   1        TR1 = 1;
+ 254   1        ET1 = 0;    //禁止定时器1中断
+ 255   1        TR1 = 1;    //启动定时器1
+ 256   1        //AUXR = 0x40;
+ 257   1        AUXR |= 0x40;
+ 258   1        AUXR &= 0xFE;////使用T1作为波特率发生器
+ 259   1        
+ 260   1        //配置串口2（见P323）
+ 261   1        S2CON = 0x10;
+ 262   1        T2L = BRT;
+ 263   1        T2H = BRT >> 8;
+ 264   1        AUXR |= 0x04;   //T2R=1（T2开始计数），T2_C/T=1（T2用作定时器）  ，见P263
+ 265   1        AUXR |= 0x10; 
+ 266   1        IE2 |= 0x01;    //打开串口2的中断
+ 267   1        EA = 1;         //打开总中断
+ 268   1        
+ 269   1      }
+ 270          
+ 271          //串口1的中断函数（蓝牙）
+ 272          void uart1Interrrupt() interrupt 4{
+ 273   1        if(RI){   //如果是接收一个字节的数据完毕
+ 274   2          RI=0;
+ 275   2          busyBLE=0;
+ 276   2          dataFromBLE=SBUF;
+ 277   2        }
+ 278   1            
+ 279   1      }
+ 280          void uart1SendChar(char sendData){
+ 281   1        while(busyBLE);
+ 282   1        busyBLE=1;
+ 283   1        SBUF=sendData;
+ 284   1        while(TI==0);
+ 285   1        TI=0;
+ 286   1        busyBLE=0;
+ 287   1      }
+ 288          
+ 289          
+ 290          //串口2的中断函数（GY-952）
+ 291          void uart2Interrrupt() interrupt 8{
+ 292   1      
+ 293   1        if (S2CON & 0x01)   //如果是接收一个字节的数据完毕
+ 294   1        {
+ 295   2            S2CON &= ~0x01;
+ 296   2            dataFromGY[wptr++] = S2BUF;
+ 297   2            wptr &= 0x0f;   //最多接收16个数据，如果超过了，就重写前面的数据
+ 298   2            busyGY=0;
+ 299   2        }
+ 300   1        
+ 301   1        if (S2CON & 0x02)   //如果是接收一个字节的数据完毕
+ 302   1        {
+C51 COMPILER V9.59.0.0   MAIN                                                              03/24/2020 01:14:00 PAGE 6   
+
+ 303   2            S2CON &= ~0x02;
+ 304   2            busyGY=0;
+ 305   2        }
+ 306   1      }
+ 307          
+ 308          //发送a5 75 1a，之后将wptr置为0x00
+ 309          void uart2SendChar(char sendData){
+ 310   1        while(busyGY);
+ 311   1        busyGY=1;
+ 312   1        S2BUF=sendData;
+ 313   1      }
+ 314          
+ 315          
+ 316          
+ 317          
+ 318          void initGY952(void){
+ 319   1      }
+ 320          
+ 321          void main()
+ 322          {
+ 323   1        
+ 324   1        int i=1;
+ 325   1        char temp;
+ 326   1        dataFromGY[0]=0x00;
+ 327   1        for(i=1;i<=sizeof(dataFromGY)/sizeof(dataFromGY[0]);i++){
+ 328   2          dataFromGY[i-1]=0x00;
+ 329   2        }
+ 330   1        dataFromBLE=0x10;
+ 331   1        delay_100ms();
+ 332   1        uartInit();
+ 333   1        while(1){
+ 334   2            uart2SendChar(dataFromBLE);
+ 335   2            delay_1s();
+ 336   2        }
+ 337   1        
+ 338   1      }
+*** WARNING C280 IN LINE 325 OF main.c: 'temp': unreferenced local variable
+ 339          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    474    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     18       3
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      2    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

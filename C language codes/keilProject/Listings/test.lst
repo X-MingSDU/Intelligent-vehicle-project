@@ -1,0 +1,769 @@
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE TEST
+OBJECT MODULE PLACED IN test.OBJ
+COMPILER INVOKED BY: D:\KEIL5\C51\BIN\C51.EXE test.c OPTIMIZE(7,SPEED) DEBUG OBJECTEXTEND PRINT(.\Listings\test.lst) TAB
+                    -S(2)
+
+line level    source
+
+   1          #include "reg51.h"
+   2          #include "intrins.h"
+   3          #include<math.h>
+   4          //×¢Òâ£¡·¢ËÍÊý¾ÝÒªÑ¡ÔñhexÄ£Ê½£¡±ÈÈçÍ¬ÑùµÄÊý¾Ý01£¬
+   5          //²ÉÓÃºÍÎÄ±¾Ä£Ê½ºÍhexÄ£Ê½·¢ËÍºó½ÓÊÕµ½µÄÊý¾ÝÊµ¼ÊÉÏ²»Ò»Ñù£¡
+   6          //´®¿Ú1ÓÃT1£¬´®¿Ú3ÓÃT3£¬´®¿Ú¶þÓÃT2×ö²¨ÌØÂÊ·¢ÉúÆ÷
+   7          
+   8          //²âÊÔ¾§ÕñÆµÂÊÎª11.0592MHz
+   9          //²¨ÌØÂÊÎª9600Hz
+  10          #define FOSC            11059200UL 
+  11          #define BRT             (65536 - FOSC / 9600 / 4)
+  12          sfr     AUXR        =   0x8e;
+  13          sfr     T4T3M       =   0xd1;
+  14          sfr     T4H         =   0xd2;
+  15          sfr     T4L         =   0xd3;
+  16          sfr     T3H         =   0xd4;
+  17          sfr     T3L         =   0xd5;
+  18          sfr     T2H         =   0xd6;
+  19          sfr     T2L         =   0xd7;
+  20          sfr     S2CON       =   0x9a;
+  21          sfr     S2BUF       =   0x9b;//ËüÃÇ¾ÓÈ»ÊÇ°¤Ò»ÆðµÄ¡£¡£¡£    
+  22          sfr     S3CON       =   0xac;
+  23          sfr     S3BUF       =   0xad;
+  24          sfr     S4CON       =   0x84;
+  25          sfr     S4BUF       =   0x85;  
+  26          sfr     IE2         =   0xaf;
+  27          
+  28          sfr     P_SW2       =   0xba;//ÍâÉè¶Ë¿ÚÇÐ»»¼Ä´æÆ÷2£¨¹¦ÄÜ½ÅÇÐ»»£©
+  29          //¿ÉÒÔÍ¨¹ýÅäÖÃÕâ¸ö¼Ä´æÆ÷ºÍP_SW1ÊµÏÖ´®¿Ú·ÖÊ±¸´ÓÃ£¬ÒÔ¼°IIC·ÖÊ±¸´ÓÃµÈ£¬¼û½Ì²ÄP74
+  30          
+  31          sfr     PWMCFG      =   0xf1; //ÔöÇ¿ÐÍPWMÅäÖÃ¼Ä´æÆ÷
+  32          sfr     PWMIF       =   0xf6;//ÔöÇ¿ÐÍPWMÖÐ¶Ï±êÖ¾¼Ä´æÆ÷
+  33          sfr     PWMFDCR     =   0xf7;//PWMÒì³£¼ì²â¿ØÖÆ¼Ä´æÆ÷
+  34          sfr     PWMCR       =   0xfe;//PWM¿ØÖÆ¼Ä´æÆ÷
+  35          
+  36          #define PWMC            (*(unsigned int volatile xdata *)0xfff0)
+  37          #define PWMCKS          (*(unsigned char volatile xdata *)0xfff2) //PWMÊ±ÖÓÑ¡Ôñ
+  38          #define TADCP           (*(unsigned int volatile xdata *)0xfff3)  //´¥·¢ADC¼ÆÊýÖµ
+  39          #define PWM0T1          (*(unsigned int volatile xdata *)0xff00)  //PWM0T1¼ÆÊýÖµ
+  40          #define PWM0T2          (*(unsigned int volatile xdata *)0xff02)  //PWM0T2¼ÆÊýÖµ
+  41          #define PWM0CR          (*(unsigned char volatile xdata *)0xff04) //PWM0¿ØÖÆ¼Ä´æÆ÷
+  42          #define PWM0HLD         (*(unsigned char volatile xdata *)0xff05) //PWM0µçÆ½±£³Ö¿ØÖÆ¼Ä´æÆ÷
+  43          #define PWM1T1          (*(unsigned int volatile xdata *)0xff10)
+  44          #define PWM1T2          (*(unsigned int volatile xdata *)0xff12)
+  45          #define PWM1CR          (*(unsigned char volatile xdata *)0xff14)
+  46          #define PWM1HLD         (*(unsigned char volatile xdata *)0xff15)
+  47          #define PWM2T1          (*(unsigned int volatile xdata *)0xff20)
+  48          #define PWM2T2          (*(unsigned int volatile xdata *)0xff22)
+  49          #define PWM2CR          (*(unsigned char volatile xdata *)0xff24)
+  50          #define PWM2HLD         (*(unsigned char volatile xdata *)0xff25)
+  51          #define PWM3T1          (*(unsigned int volatile xdata *)0xff30)
+  52          #define PWM3T2          (*(unsigned int volatile xdata *)0xff32)
+  53          #define PWM3CR          (*(unsigned char volatile xdata *)0xff34)
+  54          #define PWM3HLD         (*(unsigned char volatile xdata *)0xff35)
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 2   
+
+  55          #define PWM4T1          (*(unsigned int volatile xdata *)0xff40)
+  56          #define PWM4T2          (*(unsigned int volatile xdata *)0xff42)
+  57          #define PWM4CR          (*(unsigned char volatile xdata *)0xff44)
+  58          #define PWM4HLD         (*(unsigned char volatile xdata *)0xff45)
+  59          #define PWM5T1          (*(unsigned int volatile xdata *)0xff50)
+  60          #define PWM5T2          (*(unsigned int volatile xdata *)0xff52)
+  61          #define PWM5CR          (*(unsigned char volatile xdata *)0xff54)
+  62          #define PWM5HLD         (*(unsigned char volatile xdata *)0xff55)
+  63          #define PWM6T1          (*(unsigned int volatile xdata *)0xff60)
+  64          #define PWM6T2          (*(unsigned int volatile xdata *)0xff62)
+  65          #define PWM6CR          (*(unsigned char volatile xdata *)0xff64)
+  66          #define PWM6HLD         (*(unsigned char volatile xdata *)0xff65)
+  67          #define PWM7T1          (*(unsigned int volatile xdata *)0xff70)
+  68          #define PWM7T2          (*(unsigned int volatile xdata *)0xff72)
+  69          #define PWM7CR          (*(unsigned char volatile xdata *)0xff74)
+  70          #define PWM7HLD         (*(unsigned char volatile xdata *)0xff75)
+  71          bit busy_1;
+  72          bit busy_2;
+  73          bit busy_3;
+  74          unsigned char uart1_received;
+  75          //char uart2_received[3];
+  76          char uart2_received[3];
+  77          unsigned char uart3_received[30];
+  78          unsigned char uart3_RPY[6];
+  79          double angleYAW=0.0;
+  80          unsigned char uart1_temp;
+  81          unsigned char uart2_temp;
+  82          unsigned char wptr_2=0;
+  83          unsigned char wptr_3=0;
+  84          char speed=9;               //Ä¬ÈÏÈ«ËÙ
+  85          char newSpeed=2;            //¼ÇÂ¼ÐÂµÄËÙ¶È
+  86          char directionSign=0x01;    //±êÖ¾µ±Ç°µÄÇ°½ø·½Ïò0x01~0x04·Ö±ðÎªÇ°ºó×óÓÒ
+  87          char lastDirection=0x01;    //Ö¸ÔÚÐý×ªÖ¸¶¨½Ç¶ÈÖ®Ç°µÄÐÐÊ»·½Ïò(ÎªÁËÊµÏÖ¾²Ö¹Ê±µÄÄ³½Ç¶ÈµÄÔ­µØÐý×ª)
+  88          //char uart3_received;
+  89          //char wptr_2=0;
+  90          int pitchAngle[5]={900,777,654,531,408};   //´ÓµÍµ½¸ß£¬ÉÏÃæµÄ¶æ»úµÄÎå¸ö½Ç¶È
+  91          int yawAngle[9]={553,799,1045,1291,1537,1783,2029,2275,2521};    //´ÓÓÒµ½×ó£¬ÏÂÃæµÄ¶æ»ú9¸ö½Ç¶È£¬ÓÒ±ß5¸ö£¬×
+             -ó±ß3¸ö
+  92          void uart1_init();
+  93          void uart3_init();
+  94          void uart2_init();
+  95          void uart1_send_char(unsigned  char dat);
+  96          void uart1_send_str(unsigned  char* p);
+  97          void uart3_send_char(unsigned  char dat);
+  98          void uart3_send_str(unsigned  char *p);
+  99          void uart2_send_char(unsigned  char  dat);
+ 100          void uart2_send_str(unsigned  char* p);
+ 101          
+ 102          void uart1_isr() interrupt 4//isr: Interrupt Service Routine
+ 103          {
+ 104   1        if(RI)
+ 105   1        {
+ 106   2          RI=0;
+ 107   2          busy_1=0;
+ 108   2          uart1_received=SBUF;//½«¶Á»º´æÆ÷µÄÊý¾Ý´æ½ø±äÁ¿uart1_received
+ 109   2          // wptr_1++;
+ 110   2          //wptr_1&=0x07;//¶àÓÚ8¸ö×Ö½Ú¾Í»á¸²¸ÇÇ°ÃæµÄÊý¾Ý
+ 111   2          //if(wptr_1>=4){wptr_1=0;}//uart1_received¹æ¶¨Îª8Î»
+ 112   2        }
+ 113   1      }
+ 114           
+ 115          void uart2_isr() interrupt 8  
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 3   
+
+ 116          {
+ 117   1        if(S2CON&0x02)
+ 118   1        {
+ 119   2          S2CON&=~0x02;//~0x02==0xFD
+ 120   2          busy_2=0;//·¢ËÍÍêÒ»Ö¡Êý¾Ý£¬busy_2Î»ÖÃ0£¬ÒÔ±ã·¢ËÍÏÂÒ»Ö¡Êý¾Ý
+ 121   2        }
+ 122   1        if(S2CON&0x01)
+ 123   1        {
+ 124   2          S2CON&=~0x01;
+ 125   2          if(wptr_2<3)
+ 126   2          {
+ 127   3            uart2_received[wptr_2]=S2BUF;
+ 128   3            wptr_2++;
+ 129   3          }
+ 130   2          else
+ 131   2            uart2_temp=S2BUF;   //µ±À¶ÑÀÒ»´ÎÐÔ·¢ËÍµÄÊý¾Ý¶àÓÚÈý¸öÊ±ÊÍ·Åµô¶àÓàµÄÊý¾Ý
+ 132   2          busy_2=0;
+ 133   2        }
+ 134   1      }  
+ 135          void uart3_isr() interrupt 17
+ 136          {
+ 137   1          if (S3CON & 0x02)
+ 138   1          {
+ 139   2              S3CON &= ~0x02;
+ 140   2              busy_3=0;
+ 141   2          }
+ 142   1          if (S3CON & 0x01)
+ 143   1          {
+ 144   2              busy_3=0;
+ 145   2              S3CON &= ~0x01;
+ 146   2              uart3_received[wptr_3++] = S3BUF;
+ 147   2              if(wptr_3>=30){
+ 148   3                wptr_3=0;
+ 149   3              }
+ 150   2          }
+ 151   1      }
+ 152          //3¸öÑÓÊ±º¯Êý
+ 153          void delay_10ms()   //@11.0592MHz
+ 154          {
+ 155   1        unsigned char i, j;
+ 156   1      
+ 157   1        _nop_();
+ 158   1        _nop_();
+ 159   1        i = 144;
+ 160   1        j = 157;
+ 161   1        do
+ 162   1        {
+ 163   2          while (--j);
+ 164   2        } while (--i);
+ 165   1      }
+ 166          
+ 167          void delay_100ms(void)
+ 168          {
+ 169   1        int i=1;
+ 170   1        for(;i<=10;i++)
+ 171   1        delay_10ms();
+ 172   1      }
+ 173          void delay_1s(void)
+ 174          {
+ 175   1        int i=1;
+ 176   1        for(;i<=100;i++)
+ 177   1          delay_10ms();
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 4   
+
+ 178   1      }
+ 179          
+ 180          
+ 181          
+ 182          
+ 183          void clear_uart3_received(void){
+ 184   1        int i=1;
+ 185   1        for(;i<=30;i++){
+ 186   2          uart3_received[i-1]=0;
+ 187   2        }
+ 188   1        wptr_3=0;
+ 189   1      }
+ 190          
+ 191          //¹Ø±ÕÊä³ö£¨¸ÄÎª²éÑ¯Êä³ö£¬Ã»ÓÐ·µ»ØÊý¾Ý£©
+ 192          void closeOutput(void){
+ 193   1          uart3_send_char(0xa5);
+ 194   1          uart3_send_char(0x75);
+ 195   1          uart3_send_char(0x1a); 
+ 196   1      }
+ 197          //Ð£×¼´«¸ÐÆ÷£¨Ã»ÓÐ·µ»ØÊý¾Ý£©
+ 198          void sensorsCallibration(void){
+ 199   1          uart3_send_char(0xa5);
+ 200   1          uart3_send_char(0x57);
+ 201   1          uart3_send_char(0xfc); 
+ 202   1      
+ 203   1      }
+ 204          //ÇåÁãRAW½Ç£¨Ã»ÓÐ·µ»ØÊý¾Ý£©
+ 205          void clearYAW(void){
+ 206   1          uart3_send_char(0xa5);
+ 207   1          uart3_send_char(0x58);
+ 208   1          uart3_send_char(0xfd);   
+ 209   1      }
+ 210          //³õÊ¼»¯ÁùÖá
+ 211          void initGY952(void){
+ 212   1        closeOutput();
+ 213   1        sensorsCallibration();
+ 214   1        clearYAW();
+ 215   1      }
+ 216          //»ñÈ¡¼ÓËÙ¶È£¨·µ»Ø11¸ö×Ö½Ú£©
+ 217          void getAcc(void){
+ 218   1          clear_uart3_received();
+ 219   1          uart3_send_char(0xa5);
+ 220   1          uart3_send_char(0xc5);
+ 221   1          uart3_send_char(0x6a); 
+ 222   1      }
+ 223          //»ñÈ¡ÍÓÂÝÒÇÊý¾Ý£¨·µ»Ø11¸ö×Ö½Ú£©
+ 224          void getGYRO(void){
+ 225   1          clear_uart3_received();
+ 226   1          uart3_send_char(0xa5);
+ 227   1          uart3_send_char(0xd5);
+ 228   1          uart3_send_char(0x7a); 
+ 229   1      }
+ 230          //»ñÈ¡Å·À­½Ç£¨·µ»Ø11¸ö×Ö½Ú£©
+ 231          void sendRPYRequest(void){
+ 232   1        clear_uart3_received();
+ 233   1        uart3_send_char(0xa5);
+ 234   1        uart3_send_char(0x95);
+ 235   1        uart3_send_char(0x3a);  
+ 236   1        delay_100ms();  //×î¿ªÊ¼ÓÃµÄ10ms£¬·¢ÏÖÊý¾Ý²»ÍêÕû
+ 237   1      }
+ 238          //»ñÈ¡ËÄÔªÊý£¨·µ»Ø13¸ö×Ö½Ú£©
+ 239          void getTCB(void){
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 5   
+
+ 240   1          clear_uart3_received();
+ 241   1          uart3_send_char(0xa5);
+ 242   1          uart3_send_char(0xb5);
+ 243   1          uart3_send_char(0x5a); 
+ 244   1      }
+ 245          void refreshRPY(void){
+ 246   1          int i,j;
+ 247   1          int temp0;
+ 248   1          double temp1,temp2;
+ 249   1          sendRPYRequest();
+ 250   1          for(i=0;i<30;i++){
+ 251   2          //ÅÐ¶ÏÊÇ·ñÎªÒ»Ö¡ÓÐÐ§Êý¾Ý£¨²»ÖªµÀÎªÊ²Ã´Õâ¶ÎÓÃº¯Êý´úÌæ»á³ö´í£©
+ 252   2            if(uart3_received[i]==0x5a&&uart3_received[i+1]==0x5a&&uart3_received[i+2]==0x45&&uart3_received[i+3
+             -]==0x06){
+ 253   3              for(j=i+4;j<i+10;j++)
+ 254   3                uart3_RPY[j-i-4]=uart3_received[j];
+ 255   3              break;
+ 256   3            }    
+ 257   2          }
+ 258   1          
+ 259   1          temp0=uart3_RPY[4]<<8|uart3_RPY[5];
+ 260   1          //uart1_send_char(uart3_RPY[4]<<8|uart3_RPY[5]);
+ 261   1          temp1=((int)(temp0-0xffff)-1);
+ 262   1          temp1/=100;
+ 263   1          temp2=temp0/100;    //ÅÐ¶Ïµ±Ç°µÄYAWÊÇÕýÖµ»¹ÊÇ¸ºÖµ
+ 264   1          if(fabs(temp1)<=180)
+ 265   1            angleYAW=temp1;
+ 266   1          else if(fabs(temp2)<=180)
+ 267   1              angleYAW=temp2;
+ 268   1          delay_10ms();      
+ 269   1      }
+ 270          
+ 271          
+ 272          /* Ê¹ÓÃPWM²½Öè
+ 273          //¸ù¾Ý±äÁ¿speedÉèÖÃËÙ¶È
+ 274          ²½Öè£º
+ 275          0.  P_SW2 |= 0x80;£¨²»ÖªµÀ¸ÉÉ¶ÓÃµÄ£©  
+ 276          1.  ÉèÖÃPWMÊ±ÖÓ£¨PWMCKS£©
+ 277          2.  ÉèÖÃPWMÖÜÆÚ£¨PWMC£©
+ 278          3.  ÉèÖÃPWMµÄ¹¦ÄÜ½ÅÒÔ¼°Ê¹ÄÜPWM£¨PWMnCR£©
+ 279          4.  ÉèÖÃPWMµÄ·­×ªµã£¨Èç¹û°üº¬ÁË"STC8.h"£¬²ÎÕÕÍ·ÎÄ¼þÀïÃæµÄ±äÁ¿·ûºÅ£¬Èç¹ûÃ»ÓÐ°üº¬£¬²ÎÕÕ×Ô¼ºÐ´µÄºê¶¨Òå£©
+ 280          5.  P_SW2 &=~0x80;£¨²»ÖªµÀ¸ÉÉ¶ÓÃµÄ£©
+ 281          6.  Æô¶¯Õû¸öPWMÄ£¿é£¬Í¬Ê±¾ö¶¨ÊÇ·ñÒª¿ªÆôPWM¼ÆÊýÆ÷¹éÁãÖÐ¶Ï
+ 282          
+ 283          ÐÞ¸Ä·­×ªµãµÄ·½·¨£º
+ 284          1.  P_SW2 |= 0x80;
+ 285          2.  ÐÞ¸ÄPWMnT1ºÍPWMnT2µÄÖµ
+ 286          3.  P_SW2 &=~0x80;
+ 287          
+ 288          ¼´ÏÈ½«EAXFRÖÃÎª1£¬ÔÙ½øÐÐ·­×ªµãµÄ¸³Öµ£¬¸³ÖµÍê³ÉºóÔÙ½«EAXFRÉèÖÃÎª0
+ 289          
+ 290          ·­×ªµãËµÃ÷£º
+ 291          ¼ÆÊýÓëÉèÖÃµÄµÚÒ»¸ö·­×ªµãÏàµÈÊ±£¬PWMÊä³ö²¨ÐÎ·­×ªÎªµÍµçÆ½
+ 292          ¼ÆÊýÓëÉèÖÃµÄµÚ¶þ¸ö·­×ªµãÏàÍ¬Ê±£¬PWMÊä³ö²¨ÐÎ·­×ªÎª¸ßµçÆ½
+ 293          
+ 294          ps£º
+ 295          ¿ÉÍ¨¹ýPWMnHLD¼Ä´æÆ÷¿ØÖÆµçÆ½Êä³ö£¨Ç¿ÖÆÎª¸ßµçÆ½£¬Ç¿ÖÆÎªµÍµçÆ½£¬Õý³£Êä³ö£©
+ 296          
+ 297          */
+ 298          
+ 299          void getSpeed(void){
+ 300   1        //ËÙ¶ÈÎª1~9¾Åµµ£¬Êµ²âspeed<3µÄÊ±ºò¾Í´ø²»¶¯ÁË
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 6   
+
+ 301   1        // 0x8a40Ô¼Îª0.1±¶µÄ0x5666
+ 302   1        //PWMnTxÉèÎª0x5666ºÍÉèÎª0x0000²»Ò»Ñù£¨ÒÔÇ°»¹ÒÔÎªÊÇÒ»ÑùµÄ£©
+ 303   1        PWM0T1= 0x5666-0x8a40*(speed-1);
+ 304   1        PWM0T2= 0x0000;
+ 305   1        PWM1T1= 0x5666-0x8a40*(speed-1);
+ 306   1        PWM1T2= 0x0000;
+ 307   1        PWM2T1= 0x5666-0x8a40*(speed-1);
+ 308   1        PWM2T2= 0x0000;
+ 309   1        PWM3T1= 0x5666-0x8a40*(speed-1);
+ 310   1        PWM3T2= 0x0000;
+ 311   1        if (speed==9)
+ 312   1        {
+ 313   2          PWM0T1=0x0000;
+ 314   2          PWM1T1=0x0000;
+ 315   2          PWM2T1=0x0000;
+ 316   2          PWM3T1=0x0000;
+ 317   2        }
+ 318   1      }
+ 319          
+ 320          
+ 321          
+ 322          
+ 323          
+ 324          //¸Ä±äpitchºÍyawµÄ½Ç¶È£¬²ÎÊý1Îªpitch£¬²ÎÊý2Îªyaw¡£Èç¹ûÖ»Ïë¸Ä±äÒ»¸ö½Ç¶È£¬ÁíÍâÒ»¸ö²ÎÊýÖÃÎª10£¨»òÕß¸ü´óÖµ£©¼´
+             -¿É
+ 325          int changeAngle(int,int); 
+ 326          //³õÊ¼»¯6¸öPWM
+ 327          void initPWMs(void)
+ 328          {
+ 329   1        P_SW2 |= 0x80;                              
+ 330   1        //0b 1000 0000 EAXFRÎª1£¨¹ØÓÚ¶ÁÐ´Æ¬ÍâÊý¾Ý,²»ÖªµÀ¸ÉÉ¶ÓÃµÄ£©
+ 331   1        //ÆäËûµÄ²»±ä£¨ÎªÁË²»Ó°Ïì´®¿Ú2£¬3£¬4µÄ¹¦ÄÜ½Å£¬×îºÃ²»ÒªÖ±½Ó¶ÔP_SW2¸³Öµ£©  
+ 332   1        
+ 333   1        PWMCKS = 0x0a;                                // PWMÊ±ÖÓÎªÏµÍ³Ê±ÖÓµÄ1/10
+ 334   1        PWMC = 0x5666;                               
+ 335   1        
+ 336   1        //³õÊ¼PWMÐÅºÅ£¬ËÄ¸öPWM¶¼ÆôÓÃ£¬Ð¡³µ±£³Ö¾²Ö¹£¬ÂúËÙ
+ 337   1        getSpeed();
+ 338   1        
+ 339   1        //ÅäÖÃPWM0
+ 340   1        PWM0CR |= 0x80;                               //Ê¹ÄÜPWM0Êä³ö
+ 341   1        PWM0CR &= 0xE7;                               //0b11100111  PWM0Êä³ö½ÅÎªP2.0 
+ 342   1        PWM0T1=0x0000;
+ 343   1        PWM0T2=0x0000;
+ 344   1        
+ 345   1        //ÅäÖÃPWM1
+ 346   1        PWM1CR |= 0x80;
+ 347   1        PWM1CR &= 0xE7;                               //PWM1Êä³ö½ÅÎªP2.1                             
+ 348   1        PWM1T1=0x0000;
+ 349   1        PWM1T2=0x0000;
+ 350   1        
+ 351   1        //ÅäÖÃPWM2
+ 352   1        PWM2CR |= 0x80;
+ 353   1        PWM2CR &= 0xE7;                             
+ 354   1        PWM2T1=0x0000;
+ 355   1        PWM2T2=0x0000;
+ 356   1        
+ 357   1        //ÅäÖÃPWM3
+ 358   1        PWM3CR |= 0x80;
+ 359   1        PWM3CR &= 0xE7;                           
+ 360   1        PWM3T1=0x0000;
+ 361   1        PWM3T2=0x0000;  
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 7   
+
+ 362   1        
+ 363   1        //ÅäÖÃPWM4
+ 364   1        PWM4T1=yawAngle[5];           //×îÓÒ±ß553  ÖÐ¼ä1783
+ 365   1        PWM4T2 = 0x5666;
+ 366   1        PWM4CR |= 0x80;
+ 367   1        PWM4CR &= 0xE7;
+ 368   1        
+ 369   1        //ÅäÖÃPWM5
+ 370   1        PWM5T1=pitchAngle[0];       //0x5666*0.5/20=553£¬Îª0¶È      10/90/20*0x5666=123  Ã¿ÏòÉÏ×ª¶¯10¶ÈÐèÒª¼õ123
+ 371   1        PWM5T2 = 0x5666;
+ 372   1        PWM5CR |= 0x80;
+ 373   1        PWM5CR &= 0xE7;
+ 374   1        
+ 375   1        P_SW2 &=~0x80;
+ 376   1        PWMCR = 0x80;  
+ 377   1        delay_1s();
+ 378   1        
+ 379   1      }
+ 380          //¹Ø±ÕËùÓÐPWMÊä³ö£¨²»°üÀ¨Á½¸ö¶æ»úµÄPWM£©
+ 381          void forbiddenAll(void){
+ 382   1        PWM0CR &= ~0x80;
+ 383   1        PWM1CR &= ~0x80;
+ 384   1        PWM2CR &= ~0x80;
+ 385   1        PWM3CR &= ~0x80;
+ 386   1      }
+ 387          void stop(void){
+ 388   1        P_SW2 |=0x80;
+ 389   1        forbiddenAll();
+ 390   1        if(speed!=newSpeed){
+ 391   2          uart2_send_str("stop\n");
+ 392   2          speed=newSpeed;
+ 393   2          getSpeed();
+ 394   2        }
+ 395   1        P_SW2 &=~0x80;
+ 396   1        //lastDirection=directionSign;
+ 397   1        directionSign=0;
+ 398   1      }
+ 399          void headForwards(){
+ 400   1        stop();
+ 401   1        delay_100ms();
+ 402   1        P_SW2 |=0x80;
+ 403   1        PWM1CR |= 0x80;
+ 404   1        PWM3CR |= 0x80;
+ 405   1        P_SW2 &=~0x80;
+ 406   1        //lastDirection=directionSign;
+ 407   1        directionSign=0x01;
+ 408   1      }
+ 409          void headBackwards(void){
+ 410   1        stop();
+ 411   1        delay_100ms();
+ 412   1        P_SW2 |=0x80;
+ 413   1        PWM0CR |= 0x80;
+ 414   1        PWM2CR |= 0x80;
+ 415   1        P_SW2 &=~0x80;
+ 416   1        //lastDirection=directionSign;
+ 417   1        directionSign=0x02;
+ 418   1      }
+ 419          void turnLeft(void){
+ 420   1        stop();
+ 421   1        delay_100ms();
+ 422   1        P_SW2 |=0x80;
+ 423   1        PWM0CR |= 0x80;
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 8   
+
+ 424   1        PWM3CR |= 0x80;
+ 425   1        P_SW2 &=~0x80;
+ 426   1        //lastDirection=directionSign;
+ 427   1        directionSign=0x03;
+ 428   1        
+ 429   1      }  
+ 430          
+ 431          void turnRight(void){
+ 432   1        stop();
+ 433   1        delay_100ms();
+ 434   1        P_SW2 |=0x80;
+ 435   1        PWM1CR |= 0x80;
+ 436   1        PWM2CR |= 0x80;
+ 437   1        P_SW2 &=~0x80;
+ 438   1        //lastDirection=directionSign;
+ 439   1        directionSign=0x04;
+ 440   1      }
+ 441          
+ 442          //×¢£ºÓÉÓÚÁùÖáµÄÖÊÐÄºÍÐ¡³µµÄÖÊÐÄ²»ÖØºÏ£¬ËùÒÔÕæÊµÐý×ªµÄ½Ç¶ÈºÍ·¢ËÍµÄÖ¸Áî¿ÉÄÜÂÔÓÐ²»Í¬
+ 443          //½øÒ»²½¾«È·µÄ×ªÍäÐèÒª½øÐÐÊýÑ§ÍÆµ¼£¬°ÑÐ¡³µµÄÐý×ª½Ç¶È»»Ëã³ÉÁùÖáµÄÐý×ª½Ç¶È
+ 444          char turnLeftDegree(char theta){
+ 445   1        double targetAngleYAW=angleYAW+theta;
+ 446   1        if(fabs(theta)>90)
+ 447   1          return 0;
+ 448   1        turnLeft();
+ 449   1        while(angleYAW<targetAngleYAW){
+ 450   2          refreshRPY();
+ 451   2          delay_10ms();
+ 452   2          uart2_send_char(0x33);
+ 453   2        }
+ 454   1        switch(lastDirection)
+ 455   1        {
+ 456   2          case 0:
+ 457   2            stop();
+ 458   2            break;
+ 459   2          case 1:
+ 460   2            headForwards();
+ 461   2            break;
+ 462   2          case 2:
+ 463   2            headBackwards();
+ 464   2            break;
+ 465   2          case 3:
+ 466   2            turnLeft();
+ 467   2            break;
+ 468   2          case 4:
+ 469   2            turnRight();
+ 470   2            break;
+ 471   2        }
+ 472   1        uart2_send_char(0x59);
+ 473   1        return 1;
+ 474   1      }
+ 475          char turnRightDegree(char theta){
+ 476   1        double targetAngleYAW=angleYAW-theta;
+ 477   1        if(fabs(theta)>90)
+ 478   1          return 0;
+ 479   1        turnRight();
+ 480   1        while(angleYAW>targetAngleYAW){
+ 481   2          uart2_send_char(0x44);
+ 482   2          refreshRPY();
+ 483   2          delay_10ms();
+ 484   2        }
+ 485   1        switch(lastDirection)
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 9   
+
+ 486   1        {
+ 487   2          case 0:
+ 488   2            stop();
+ 489   2            break;
+ 490   2          case 1:
+ 491   2            headForwards();
+ 492   2            break;
+ 493   2          case 2:
+ 494   2            headBackwards();
+ 495   2            break;
+ 496   2          case 3:
+ 497   2            turnLeft();
+ 498   2            break;
+ 499   2          case 4:
+ 500   2            turnRight();
+ 501   2            break;
+ 502   2        }
+ 503   1        uart2_send_char(0x58);
+ 504   1        return 1;
+ 505   1      }
+ 506          
+ 507          void refreshSpeed(){
+ 508   1        //Ö»ÓÐËÙ¶È¸ü¸ÄÊ±²ÅÖ´ÐÐ
+ 509   1        if(speed!=newSpeed){
+ 510   2          //ÔÚstop()¸üÐÂÁËspeedµÄÖµ
+ 511   2          switch(directionSign){
+ 512   3            case 0x01:
+ 513   3              headForwards();
+ 514   3              break;
+ 515   3            case 0x02:
+ 516   3              headBackwards();
+ 517   3              break;
+ 518   3            case 0x03:
+ 519   3              turnLeft();
+ 520   3              break;
+ 521   3            case 0x04:
+ 522   3              turnRight();
+ 523   3              break;
+ 524   3            default:
+ 525   3              break;
+ 526   3          }
+ 527   2        }
+ 528   1      }
+ 529          void main()
+ 530          {
+ 531   1        int i,j;
+ 532   1        char temp[3]={0};
+ 533   1        delay_100ms();
+ 534   1        uart1_init();//×¢Òâ¼Ä´æÆ÷AUXRµÄÖµÊÇ·ñ±»ÖØ¸´¸Ä¶¯µ¼ÖÂinitÊ§°Ü
+ 535   1        uart2_init();
+ 536   1        uart3_init();
+ 537   1        ES=1;       //´ò¿ª´®¿Ú1µÄÖÐ¶Ï
+ 538   1        IE2 = 0x09; //´ò¿ª´®¿Ú3(0x08)µÄÖÐ¶ÏºÍ´®¿Ú2µÄÖÐ¶Ï(0x01) 
+ 539   1        EA = 1;//´ò¿ª×ÜÖÐ¶Ï
+ 540   1        initGY952(); //·¢ËÍÊý¾ÝÒ»¶¨Òª·ÅÔÚ´®¿ÚµÄ³õÊ¼»¯Ö®ºó£¨°üÀ¨TMOD,SCON,THn,TLn,AUXRºÍ´®¿ÚÖÐ¶ÏÏà¹ØµÄ¼Ä´æÆ÷ES,IE
+             -2,EAµÈ£©
+ 541   1        initPWMs();    
+ 542   1        //ÓÉÓÚÓÐ¶à´¦ÑÓÊ±£¬ËùÒÔÈç¹ûÉÏÎ»»ú·¢ËÍÊý¾ÝÌ«¿ì
+ 543   1        //ÔÚÊý¾Ý±»´¦ÀíÖ®Ç°¾Í±»¸²¸ÇÁË£¬¿ÉÄÜ»áµ¼ÖÂ·¢ËÍµÄÊý¾Ý±È½ÓÊÕµÄÊý¾ÝÉÙ
+ 544   1        //ËùÒÔÉÏÎ»»ú¶ÁÈ¡Êý¾ÝµÄ¼ä¸ô×îºÃ²»Òª³¬¹ý100ms
+ 545   1        while(1)                          //¶ÔÀ¶ÑÀ½ÓÊÕµ½µÄÊý¾Ý½øÐÐÅÐ¶Ï 
+ 546   1        {
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 10  
+
+ 547   2          wptr_2=0;
+ 548   2          delay_10ms();                   //×¢Òâdelay_10msÒ»¶¨ÒªÔÚwptr_2=0µÄºóÃæ£¬ÒòÎªÈç¹ûÊý¾ÝÃ»ÓÐÔÚÑÓÊ±Ö®ÖÐ±»½Ó
+             -ÊÕÍêµÄ»°
+ 549   2                                          //ÓÉÓÚwptr_2ÖÃ0ÁË£¬»á¸²¸ÇÖ®Ç°µÄÄ³Ð©Êý¾Ý¡£
+ 550   2          while(uart2_received[0]!=0x00)  //²»ÖªµÀÎªÊ²Ã´ÓÃif²¶×½²»µ½
+ 551   2          {          
+ 552   3            delay_10ms();                //È·±£Ê£ÏÂµÄÁ½¸öÊý¾ÝÒ²·¢¹ýÀ´ÁË
+ 553   3                                         //uart1_send_char(wptr_2);
+ 554   3            for(i=0;i<3;i++)
+ 555   3              temp[i]=uart2_received[i];
+ 556   3                                         //JDY-16µÄÌØÕ÷ÖµÔÚbluepyÖÐ¶Á²»ÁË£¬²»ÒªÏÂÃæµÄ·´À¡ÁË
+ 557   3            /*if(temp[0]==0||temp[1]==0||temp[2]==0)
+ 558   3            {
+ 559   3              uart2_send_char(0x88);
+ 560   3              for(i=0;i<3;i++)
+ 561   3                uart2_received[i]=0;    //²»¶Ôuart2_received½øÐÐÇåÁã²Ù×÷µÄ»°Ã»ÓÐ·¢ËÍÊý¾ÝÊ±´®¿Ú2»áÒ»Ö±·¢ËÍ0x88
+ 562   3              wptr_2=0;
+ 563   3              continue;
+ 564   3            }*/
+ 565   3            for(i=0;i<3;i++)
+ 566   3              uart2_received[i]=0;      //Ò»»ñÈ¡µ½Êý¾ÝÖ®ºóÂíÉÏÇå¿Õuart2_received£¨whileÑ­»·µÄ×îºóÇå¿ÕÒ²ÐÐ£©
+ 567   3            refreshRPY();               //Ã¿´Î½ÓÊÕÖ¸ÁîÇ°¶¼¸üÐÂRPY½Ç
+ 568   3            switch(temp[0]){
+ 569   4              case 0x01:                //Ò»Ö±Ç°½ø
+ 570   4                uart2_send_char(0x01);
+ 571   4                headForwards();
+ 572   4                clearYAW();
+ 573   4                uart2_send_char(directionSign);
+ 574   4                break;    
+ 575   4              case 0x02:                //Ò»Ö±ºóÍË
+ 576   4                uart2_send_char(0x02);
+ 577   4                headBackwards();
+ 578   4                clearYAW();
+ 579   4                uart2_send_char(directionSign);
+ 580   4                break;    
+ 581   4              case 0x03:                //Ò»Ö±Ïò×ó×ª
+ 582   4                uart2_send_char(0x03);
+ 583   4                turnLeft();
+ 584   4                clearYAW();
+ 585   4                uart2_send_char(directionSign);
+ 586   4                break;
+ 587   4              case 0x04:               //Ò»Ö±ÏòÓÒ×ª
+ 588   4                uart2_send_char(0x04);
+ 589   4                turnRight();
+ 590   4                clearYAW();            //²»ÄÜ°ÑclearYAW()·ÅÔÚturnRightÀïÃæ£¬ÒòÎª°´ÕÕÄ³½Ç¶ÈÐý×ªÊ±»áÓÃµ½Ö®Ç°µÄYAW½
+             -Ç¶È
+ 591   4                uart2_send_char(directionSign);
+ 592   4                break;
+ 593   4              case 0x05:
+ 594   4                lastDirection=directionSign;
+ 595   4                if(temp[1]!=0){
+ 596   5                  uart2_send_char(7);
+ 597   5                  turnLeftDegree(temp[1]);
+ 598   5                  clearYAW(); 
+ 599   5                }
+ 600   4                break;
+ 601   4              case 0x06:
+ 602   4                lastDirection=directionSign;
+ 603   4                if(temp[1]!=0){
+ 604   5                  uart2_send_char(0x06);
+ 605   5                  turnRightDegree(temp[1]);
+ 606   5                  clearYAW(); 
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 11  
+
+ 607   5                }
+ 608   4                break;
+ 609   4              case 0x07:            //¸Ä±äËÙ¶È
+ 610   4                uart2_send_char(7);
+ 611   4                newSpeed=temp[1];
+ 612   4                refreshSpeed();
+ 613   4                break;
+ 614   4              case 0x09:            //¸Ä±äÁ½¸ö¶æ»úµÄ½Ç¶È
+ 615   4                changeAngle(temp[1]-1,temp[2]-1);    //temp[i]²»ÄÜÎª0£¬ËùÒÔ¸Ä±ä¶æ»ú½Ç¶ÈÊ±£¬´«ÈëÏÂ±ê+1
+ 616   4                break;
+ 617   4              default:            //Í£Ö¹
+ 618   4                stop();
+ 619   4                break;
+ 620   4            }
+ 621   3          }
+ 622   2        }
+ 623   1      }
+*** WARNING C280 IN LINE 531 OF test.c: 'j': unreferenced local variable
+ 624          void uart1_init()
+ 625          {
+ 626   1        SCON=0x50;//ÒÔÄ£Ê½0¹¤×÷£¬Í¬Ê±Ñ¡ÔñT1×÷Îª~
+ 627   1        TMOD=0x00;//16Î»×Ô¶¯ÖØ×°
+ 628   1        TL1=BRT;
+ 629   1        TH1=BRT>>8;
+ 630   1        TR1=1;//T1¿ªÊ¼¼ÆÊý
+ 631   1        AUXR =0x00;
+ 632   1        AUXR |= 0x40;
+ 633   1        AUXR &= 0xFE;   //Ê¹ÓÃT1×÷Îª²¨ÌØÂÊ·¢ÉúÆ÷
+ 634   1        busy_1=0;
+ 635   1        uart1_received=0x00;
+ 636   1      }
+ 637           
+ 638          void uart1_send_char(unsigned  char dat)
+ 639          {
+ 640   1        while(busy_1);
+ 641   1        busy_1=1;
+ 642   1        SBUF=dat;
+ 643   1        while(TI==0);
+ 644   1        TI=0;//Ö±½ÓÔÚ·¢ËÍº¯ÊýÀï½«TIÖÃ0£¬²»ÔÚÖÐ¶Ïº¯ÊýÀïÖÃ0
+ 645   1        busy_1=0;//×î¿ªÊ¼Õâ¾äÃ»Ð´
+ 646   1      }
+ 647          void uart1_send_str(unsigned  char* p)
+ 648          {
+ 649   1        while(*p)
+ 650   1        {
+ 651   2          uart1_send_char(*p++);
+ 652   2        }
+ 653   1      }
+ 654          
+ 655          
+ 656          void uart2_init()
+ 657          {
+ 658   1        S2CON=0x10;//S4ST4==0£¨Ê¹ÓÃT2×÷Îª~£©£¬S4REN=1£¬ÔÊÐí½ÓÊÕÊý¾Ý
+ 659   1        //ÎªÁË²»¸ÉÉæÆäËû¶¨Ê±Æ÷µÄÊ¹ÓÃ£¬×îºÃ²ÉÈ¡Î»ÔËËã£¬Ö»¶ÔÓëT2ÓÐ¹ØµÄÎ»¸³Öµ
+ 660   1        T2L=BRT;
+ 661   1        T2H=BRT>>8;//ÏÈ¸³ÖµÔÙ¼ÆÊý
+ 662   1        AUXR|=0x10;//T2R=1£¬T2¿ªÊ¼¼ÆÊý
+ 663   1        AUXR|=0x04;//T2x12=1,²»·ÖÆµ
+ 664   1        busy_2=0;
+ 665   1      }
+ 666          void uart2_send_char(unsigned  char  dat)
+ 667          {
+C51 COMPILER V9.59.0.0   TEST                                                              04/25/2020 09:19:35 PAGE 12  
+
+ 668   1        while(busy_2);
+ 669   1        busy_2=1;
+ 670   1        S2BUF=dat;//×¢Òâ²»ÊÇSBUF
+ 671   1      }
+ 672          void uart2_send_str(unsigned  char* p)
+ 673          {
+ 674   1        while(*p)
+ 675   1        {
+ 676   2          uart2_send_char(*p++);
+ 677   2        }
+ 678   1      }
+ 679          
+ 680          void uart3_init()
+ 681          {
+ 682   1          S3CON = 0x50; 
+ 683   1          //0b  0101 0000  £¨P326£©£¬¿É±ä²¨ÌØÂÊ 8Î»£¬Ñ¡ÔñT3Îª~£¬
+ 684   1          //Ö÷ÒªÈ·¶¨¹¤×÷Ä£Ê½ºÍ¶¨Ê±Æ÷·¢ÉúÆ÷               
+ 685   1          T3L = BRT;
+ 686   1          T3H = BRT >> 8;//baud_rateÎª9600
+ 687   1          T4T3M = 0x0a; //0b 0000 1£¨T3R£¬T3¿ªÊ¼¼ÆÊý£©001
+ 688   1          busy_3 = 0;
+ 689   1      }
+ 690          void uart3_send_char(unsigned  char dat)
+ 691          {
+ 692   1          while (busy_3);
+ 693   1          busy_3 = 1;
+ 694   1          S3BUF = dat; //Ïò´®¿Ú3µÄÊý¾Ý»º´æÆ÷Ð´ÈëÊý¾Ý
+ 695   1      }
+ 696          void uart3_send_str(unsigned  char *p)
+ 697          {
+ 698   1          while (*p)
+ 699   1          {
+ 700   2              uart3_send_char(*p++);
+ 701   2          }
+ 702   1      } 
+ 703          
+ 704          int changeAngle(int i, int j)
+ 705          {
+ 706   1        //º¯Êý²ÎÊýÊÇcharÊ±º¯Êý²»ÄÜÕý³£Ö´ÐÐ
+ 707   1        uart2_send_char(i);
+ 708   1        uart2_send_char(j);
+ 709   1        P_SW2 |= 0x80;
+ 710   1        if(i<5&&i>=0)
+ 711   1          PWM5T1=pitchAngle[i];
+ 712   1        if(j<9&&j>=0)
+ 713   1          PWM4T1=yawAngle[j];
+ 714   1        P_SW2 &= ~0x80; 
+ 715   1        return 1;  
+ 716   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2064    ----
+   CONSTANT SIZE    =      9    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     80      36
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      3    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  1 WARNING(S),  0 ERROR(S)

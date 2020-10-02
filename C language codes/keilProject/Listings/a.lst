@@ -1,0 +1,103 @@
+C51 COMPILER V9.59.0.0   A                                                                 04/18/2020 09:35:17 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE A
+OBJECT MODULE PLACED IN a.OBJ
+COMPILER INVOKED BY: D:\KEIL5\C51\BIN\C51.EXE a.c OPTIMIZE(7,SPEED) DEBUG OBJECTEXTEND PRINT(.\Listings\a.lst) TABS(2)
+
+line level    source
+
+   1          #include "reg51.h"
+   2          #include "intrins.h"
+   3          
+   4          #define FOSC            11059200UL
+   5          #define BRT             (65536 - FOSC / 9600 / 4)
+   6          
+   7          sfr     AUXR        =   0x8e;
+   8          sfr     T2H         =   0xd6;
+   9          sfr     T2L         =   0xd7;
+  10          sfr     S2CON       =   0x9a;
+  11          sfr     S2BUF       =   0x9b;
+  12          sfr     IE2         =   0xaf;
+  13          
+  14          bit busy;
+  15          char wptr;
+  16          char rptr;
+  17          char buffer[16];
+  18          
+  19          void Uart2Isr() interrupt 8
+  20          {
+  21   1          if (S2CON & 0x02)
+  22   1          {
+  23   2              S2CON &= ~0x02;
+  24   2              busy = 0;
+  25   2          }
+  26   1          if (S2CON & 0x01)
+  27   1          {
+  28   2              S2CON &= ~0x01;
+  29   2              buffer[wptr++] = S2BUF;
+  30   2              wptr &= 0x0f;
+  31   2          }
+  32   1      }
+  33          
+  34          void Uart2Init()
+  35          {
+  36   1          S2CON = 0x10;
+  37   1          T2L = BRT;
+  38   1          T2H = BRT >> 8;
+  39   1          AUXR = 0x14;
+  40   1          wptr = 0x00;
+  41   1          rptr = 0x00;
+  42   1          busy = 0;
+  43   1      }
+  44          
+  45          void Uart2Send(char dat)
+  46          {
+  47   1          while (busy);
+  48   1          busy = 1;
+  49   1          S2BUF = dat;
+  50   1      }
+  51          
+  52          void Uart2SendStr(char *p)
+  53          {
+  54   1          while (*p)
+  55   1          {
+C51 COMPILER V9.59.0.0   A                                                                 04/18/2020 09:35:17 PAGE 2   
+
+  56   2              Uart2Send(*p++);
+  57   2          }
+  58   1      }
+  59          
+  60          void main()
+  61          {
+  62   1          Uart2Init();
+  63   1          IE2 = 0x01;
+  64   1          EA = 1;
+  65   1        
+  66   1      
+  67   1      
+  68   1          while (1)
+  69   1          {    
+  70   2            Uart2Send(0xff);
+  71   2                    if (rptr != wptr)
+  72   2              {
+  73   3                  Uart2Send(buffer[rptr++]);
+  74   3                  rptr &= 0x0f;
+  75   3              }
+  76   2          }
+  77   1      }
+  78          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    154    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     18       3
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
